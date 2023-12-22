@@ -1,0 +1,147 @@
+version: "3.7"
+services:
+  binhex:
+    image: binhex/arch-delugevpn
+    container_name: binhex
+    cap_add:
+      - NET_ADMIN
+    hostname: binhex
+    ports:
+      - 8112:8112
+      - 8118:8118
+      - 58846:58846
+      - 58946:58946
+    environment:
+      - VPN_ENABLED=yes
+      - VPN_USER=${VPN_USER}
+      - VPN_PASS=${VPN_PASS}
+      - VPN_PROV=${VPN_PROV}
+      - VPN_CLIENT=${VPN_CLIENT}
+      # - VPN_OPTIONS=<additional openvpn cli options>
+      - STRICT_PORT_FORWARD=${STRICT_PORT_FORWARD}
+      - ENABLE_PRIVOXY=yes
+      - LAN_NETWORK=${LAN_NETWORK}
+      - NAME_SERVERS=${NAME_SERVERS}
+      - DELUGE_DAEMON_LOG_LEVEL=error
+      - DELUGE_WEB_LOG_LEVEL=error
+      # - ADDITIONAL_PORTS=<port number(s)>
+      - DEBUG=false
+      # - UMASK=<umask for created files>
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - hdd-data:/data
+      - ${CONFIG}:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
+    networks:
+      - binhex-net
+  plex:
+    image: ghcr.io/linuxserver/plex:latest
+    container_name: plex
+    network_mode: host
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - VERSION=docker
+      - PLEX_CLAIM= #optional
+    volumes:
+      - plex-data:/config
+      - tv-data:/tv
+      - movie-data:/movies
+    restart: always
+  sonarr:
+    image: ghcr.io/linuxserver/sonarr
+    container_name: sonarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=America/Los_Angeles
+    volumes:
+      - ./docker-compose/sonarr/data:/config
+      - tv-data:/tv
+      - dl-data:/downloads
+    ports:
+      - 8989:8989
+    restart: always
+    networks:
+      - binhex-net
+  radarr:
+    image: ghcr.io/linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=America/Los_Angeles
+    volumes:
+      - ./docker-compose/radarr/data:/config
+      - movie-data:/movies
+      - dl-data:/downloads
+    ports:
+      - 7878:7878
+    restart: always
+    networks:
+      - binhex-net
+  jackett:
+    image: ghcr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=America/Los_Angeles
+      - AUTO_UPDATE=true #optional
+      # - RUN_OPTS=<run options here> #optional
+    volumes:
+      - ./docker-compose/jackett/config:/config
+      - ./docker-compose/jackett/config:/downloads
+    ports:
+      - 9117:9117
+    restart: always
+    networks:
+      - binhex-net
+networks:
+  binhex-net:
+    driver: bridge
+volumes:
+  hdd-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/media"
+  dl-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/media/downloads"
+  tv-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/media/tv"
+  movie-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/media/movies"
+  # music-data:
+  #   driver: local
+  #   driver_opts:
+  #     o: bind
+  #     type: none
+  #     device: "/media/heondo/8d8e62a7-0bd9-4ffa-928f-16c11beffd70/media/music"
+          #temp-data:
+  #  driver: local
+  #  driver_opts:
+  #    o: bind
+  #    type: none
+  #    device: "/media/heondo/8d8e62a7-0bd9-4ffa-928f-16c11beffd70/media"
+  plex-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/media/plex-library"
